@@ -1,82 +1,83 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'TARGET_HOST', defaultValue: '192.168.0.200', description: '目标主机 IP 地址')
+        string(name: 'ANSIBLE_USER', defaultValue: 'jqu003', description: 'Ansible 连接用户名')
+        booleanParam(name: 'UPDATE_SYSTEM', defaultValue: false, description: '是否更新系统（Update apt cache / Upgrade）')
+        booleanParam(name: 'INSTALL_MINICOM', defaultValue: false, description: '是否安装 minicom')
+        booleanParam(name: 'INSTALL_COMMON', defaultValue: true, description: '是否安装常用工具（vim, git, curl, wget, net-tools, htop）')
+    }
+
     stages {
 
         stage('Checkout Code') {
             steps {
-                git 'git@github.com:quzhijing/jenkins-ansible-pipeline.git'
+                checkout scm
             }
         }
 
-        stage('Shell Practice') {
+        stage('Validate Ansible Playbook') {
             steps {
                 sh '''
-                echo "=== Shell Practice Start ==="
-                echo "Current user:"
-                whoami
-
-                echo "Current path:"
-                pwd
-
-                echo "List files:"
-                ls -l
-
-                echo "System info:"
-                uname -a
-
-                echo "Time:"
-                date
-
-                echo "=== Environment Variables ==="
-                echo "HOME: $HOME"
-                echo "PATH: $PATH"
-                echo "USER: $USER"
-
-                echo "=== File Operations ==="
-                echo "Create a test file:"
-                echo "Hello Jenkins!" > test_file.txt
-                cat test_file.txt
-                rm test_file.txt
-
-                echo "=== Network Commands ==="
-                echo "Ping localhost:"
-                ping -c 2 127.0.0.1 || echo "Ping failed"
-
-                echo "Check network interfaces:"
-                ip addr show || ifconfig
-
-                echo "=== SSH Example (assuming SSH key configured) ==="
-                echo "SSH to remote host (example, replace with actual host):"
-                # ssh -o StrictHostKeyChecking=no user@host "echo 'SSH Success'; uname -a" || echo "SSH failed - configure keys first"
-
-                echo "=== Archive and Compress ==="
-                echo "Create and compress a directory:"
-                mkdir -p test_dir
-                echo "Test content" > test_dir/file1.txt
-                tar -czf test_dir.tar.gz test_dir
-                ls -l test_dir.tar.gz
-                rm -rf test_dir test_dir.tar.gz
-
-                echo "=== Process Management ==="
-                echo "List processes:"
-                ps aux | head -5
-
-                echo "=== Disk Usage ==="
-                df -h
-
-                echo "=== Shell Practice End ==="
+                echo "=== Checking Ansible Installation ==="
+                ansible --version
+                
+                echo ""
+                echo "=== Validating Playbook Syntax ==="
+                ansible-playbook playbook.yml -i inventory/hosts.ini --syntax-check
+                
+                echo ""
+                echo "=== Linting Playbook (optional) ==="
+                ansible-lint playbook.yml || echo "Warning: ansible-lint found issues"
                 '''
             }
         }
 
-        stage('Run Ansible') {
+        stage('Prepare Variables') {
             steps {
-                sh '''
-                echo "=== Run Ansible ==="
-                ansible-playbook -i inventory/hosts.ini playbook.yml
-                '''
+                script {
+                    echo "=== Build Parameters ==="
+                    echo "TARGET_HOST: ${params.TARGET_HOST}"
+                    echo "ANSIBLE_USER: ${params.ANSIBLE_USER}"
+                    echo "UPDATE_SYSTEM: ${params.UPDATE_SYSTEM}"
+                    echo "INSTALL_MINICOM: ${params.INSTALL_MINICOM}"
+                    echo "INSTALL_COMMON: ${params.INSTALL_COMMON}"
+                }
             }
+        }
+
+        stage('Run Ansible Playbook') {
+            steps {
+                sshagent(['git']) {
+                    sh '''
+                    echo "=== Starting Ansible Deployment ==="
+                    
+                    ansible-playbook playbook.yml \
+                      -i "${TARGET_HOST}," \
+                      -u "${ANSIBLE_USER}" \
+                      -e "update_system=${UPDATE_SYSTEM}" \
+                      -e "install_minicom=${INSTALL_MINICOM}" \
+                      -e "install_common=${INSTALL_COMMON}" \
+                      -v
+                    
+                    echo ""
+                    echo "=== Ansible Deployment Completed ==="
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline executed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs above.'
+        }
+        always {
+            echo '=== Pipeline Completed ==='
         }
     }
 }
