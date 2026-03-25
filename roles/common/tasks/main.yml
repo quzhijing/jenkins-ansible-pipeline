@@ -1,0 +1,29 @@
+---
+# tasks file for common
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  when: update_system | bool
+
+- name: Upgrade system
+  apt:
+    upgrade: dist
+  when: update_system | bool
+
+- name: Install minicom
+  apt:
+    name: minicom
+    state: present
+  when: install_minicom | bool
+
+- name: Install common tools
+  apt:
+    name:
+      - vim
+      - git
+      - curl
+      - wget
+      - net-tools
+      - htop
+    state: present
+  when: install_common | bool

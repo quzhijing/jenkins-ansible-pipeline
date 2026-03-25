@@ -1,0 +1,4 @@
+- name: Install minicom
+  apt:
+    name: minicom
+    state: present

@@ -1,0 +1,5 @@
+---
+# defaults file for common
+update_system: true
+install_minicom: true
+install_common: true
