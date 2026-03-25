@@ -49,7 +49,7 @@ pipeline {
 
         stage('Run Ansible Playbook') {
             steps {
-                sshagent(['git']) {
+                sshagent(['e8e39288-3317-4b60-a00b-438c9dc73e4d']) {
                     sh '''
                     echo "=== Starting Ansible Deployment ==="
                     
