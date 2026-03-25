@@ -56,6 +56,7 @@ pipeline {
                     ansible-playbook playbook.yml \
                       -i "${TARGET_HOST}," \
                       -u "${ANSIBLE_USER}" \
+                      --ssh-common-args='-o StrictHostKeyChecking=no' \
                       -e "update_system=${UPDATE_SYSTEM}" \
                       -e "install_minicom=${INSTALL_MINICOM}" \
                       -e "install_common=${INSTALL_COMMON}" \
